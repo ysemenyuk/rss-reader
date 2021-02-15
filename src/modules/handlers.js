@@ -104,42 +104,82 @@ export const submitHandler = (e, state) => {
     });
 };
 
+const toggleFeedProp = (feed, state, checked, propName) => {
+  if (checked) {
+    state.feeds.forEach((item) => {
+      if (item.id === feed.id) {
+        item[propName] = true;
+      }
+    });
+  } else {
+    state.feeds.forEach((item) => {
+      if (item.id === feed.id) {
+        item[propName] = false;
+      }
+    });
+  }
+};
+
 export const feedHandler = (e, state, feed) => {
-  console.log(e.target);
-  console.dir(e.target);
+  // console.log(e.target);
+  // console.dir(e.target);
   if (e.target.name === 'update') {
     updateFeed(feed, state);
   } else if (e.target.name === 'delete') {
     deleteFeed(feed, state);
-  } else if (e.target.type === 'checkbox') {
-    if (e.target.checked) {
-      state.feeds.forEach((item) => {
-        if (item.id === feed.id) {
-          item.autoUpdate = true;
-        }
-      });
-    } else {
-      state.feeds.forEach((item) => {
-        if (item.id === feed.id) {
-          item.autoUpdate = false;
-        }
-      });
-    }
+  } else if (e.target.name === 'autoUpdate') {
+    toggleFeedProp(feed, state, e.target.checked, 'autoUpdate');
+  } else if (e.target.name === 'showPosts') {
+    toggleFeedProp(feed, state, e.target.checked, 'showPosts');
   }
 };
 
-export const postHandler = (e, state) => {
-  const id = e.target.dataset.postId;
+const togglePostProp = (post, state, propName) => {
+  state.posts.forEach((item) => {
+    if (item.id === post.id) {
+      if (post[propName]) {
+        item[propName] = false;
+      } else {
+        item[propName] = true;
+      }
+    }
+  });
+};
 
-  if (id) {
-    state.posts.forEach((post) => {
-      if (id === post.id) {
-        post.readed = true;
+export const postHandler = (e, state, post) => {
+  const { type, bsTarget } = e.target.dataset;
+  console.dir(e.target);
+  console.dir(e.target.dataset);
+  if (type === 'toggleReaded') {
+    togglePostProp(post, state, 'readed');
+  } else if (type === 'toggleFavorite') {
+    togglePostProp(post, state, 'favorite');
+  } else if (type === 'readed') {
+    state.posts.forEach((item) => {
+      if (item.id === post.id) {
+        item.readed = true;
       }
     });
   }
 
-  if (e.target.dataset.bsTarget === '#modal') {
-    state.modal = { postId: id };
+  if (bsTarget === '#modal') {
+    state.modal = { postId: post.id };
+  }
+};
+
+const toggleFilterProp = (state, checked, propName) => {
+  if (checked) {
+    state.ui.filter[propName] = true;
+  } else {
+    state.ui.filter[propName] = false;
+  }
+  console.log('toggleFilterProp', state.ui);
+};
+
+export const postsFilterHandler = (e, state) => {
+  if (e.target.name === 'showUnread') {
+    toggleFilterProp(state, e.target.checked, 'showUnread');
+  } else if (e.target.name === 'showFavorite') {
+    toggleFilterProp(state, e.target.checked, 'showFavorite');
   }
 };

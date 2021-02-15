@@ -1,7 +1,7 @@
 import onChange from 'on-change';
 import i18n from 'i18next';
-import { postHandler, feedHandler } from './handlers.js';
-import { createFeedElement, createPostElement } from './createElements.js';
+import { postHandler, feedHandler, postsFilterHandler } from './handlers.js';
+import { createFeedElement, createPostElement, createPostsFilter } from './createElements.js';
 
 const renderForm = (state, elements) => {
   const { form } = state;
@@ -42,7 +42,6 @@ const renderForm = (state, elements) => {
       break;
     default:
       // console.log('unknown form status:', form.status);
-      // throw new Error('unknown form status:', form.status);
   }
 };
 
@@ -88,7 +87,11 @@ const renderPosts = (state, elements) => {
     const title = document.createElement('h2');
     title.textContent = i18n.t('posts.title');
 
+    const filter = createPostsFilter(state);
+    filter.addEventListener('click', (e) => postsFilterHandler(e, state));
+
     postsContainer.append(title);
+    postsContainer.append(filter);
     postsContainer.append(postsList);
   } else {
     postsContainer.innerHTML = '';
@@ -107,6 +110,7 @@ const renderModal = (state, elements) => {
 
 const view = (state, elements) => {
   const watchedState = onChange(state, (path) => {
+    console.log('path:', path);
     switch (path) {
       case 'form':
         renderForm(watchedState, elements);
@@ -122,7 +126,6 @@ const view = (state, elements) => {
         break;
       default:
         // console.log('unknown path:', path);
-        // throw new Error('unknown path:', path);
     }
   });
 

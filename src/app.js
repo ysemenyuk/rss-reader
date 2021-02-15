@@ -20,6 +20,13 @@ const app = () => {
     modal: {
       postId: '',
     },
+    ui: {
+      posts: new Set(),
+      filter: {
+        showFavorite: false,
+        showUnread: false,
+      },
+    },
   };
 
   const elements = {
