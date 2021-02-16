@@ -11,7 +11,7 @@ import parseRss from './parseRss.js';
 
 const validateInput = (value, state) => {
   const existingUrls = state.feeds.map((feed) => feed.url);
-  const schema = yup.string().url().notOneOf(existingUrls);
+  const schema = yup.string().required().url().notOneOf(existingUrls);
   try {
     schema.validateSync(value);
     return null;
@@ -33,6 +33,7 @@ const deleteFeed = (feed, state) => {
 
   state.feeds = [...feeds];
   state.posts = [...posts];
+  state.loadingProcess = { status: 'deleted', error: null };
 };
 
 const updateFeed = (feed, state) => {
@@ -62,6 +63,12 @@ const updateFeed = (feed, state) => {
 //     });
 // };
 
+export const exampleHandler = (e, state) => {
+  e.preventDefault();
+  state.example = '';
+  state.example = e.target.textContent;
+};
+
 export const submitHandler = (e, state) => {
   e.preventDefault();
 
@@ -70,36 +77,35 @@ export const submitHandler = (e, state) => {
 
   const errorInput = validateInput(url, state);
   if (errorInput) {
-    state.form = { status: 'error', error: errorInput };
+    state.form = { valid: false, error: errorInput };
     return;
   }
-
-  state.form = { status: 'loading', error: '' };
+  state.form = { valid: true, error: null };
+  state.loadingProcess = { status: 'loading', error: null };
 
   axios.get(addProxyToUrl(url))
     .then((resp) => {
       const feedData = parseRss(resp.data.contents);
-
       const feedId = uniqueId();
-      const added = new Date().toLocaleString();
 
-      const feed = { ...feedData.feed, url, id: feedId, added, updated: added };
-      const posts = feedData.posts.map((post) => ({ ...post, id: uniqueId(), feedId }));
-
-      console.log(added);
+      const feed = { ...feedData.feed, url, id: feedId };
+      const posts = feedData.posts
+        .map((post) => ({ ...post, feedId, id: uniqueId(), readed: false, faforite: false }));
 
       state.feeds = [...state.feeds, feed];
       state.posts = [...state.posts, ...posts];
-      state.form = { status: 'loaded', error: '' };
+      state.loadingProcess = { status: 'loaded', error: null };
 
       // const updateTimeout = 5000;
       // setTimeout(() => autoUpdateFeed(feed, state, updateTimeout), updateTimeout);
     })
     .catch((err) => {
       if (err.isAxiosError) {
-        state.form = { status: 'error', error: 'networkErr' };
+        state.loadingProcess = { status: 'failed', error: 'network' };
+      } else if (err.isParsingError) {
+        state.loadingProcess = { status: 'failed', error: 'parsing' };
       } else {
-        state.form = { status: 'error', error: err.message };
+        state.loadingProcess = { status: 'failed', error: 'unknown' };
       }
     });
 };

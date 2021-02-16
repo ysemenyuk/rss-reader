@@ -3,45 +3,63 @@ import i18n from 'i18next';
 import { postHandler, feedHandler, postsFilterHandler } from './handlers.js';
 import { createFeedElement, createPostElement, createPostsFilter } from './createElements.js';
 
-const renderForm = (state, elements) => {
-  const { form } = state;
-  const { feedback, addButton, input } = elements;
+const renderExample = (state, elements) => {
+  const { input } = elements;
+  input.value = state.example;
+};
 
-  switch (form.status) {
-    case 'init':
+const renderLoadingProcess = (state, elements) => {
+  const { loadingProcess: { status, error } } = state;
+  const { input, submit, feedback } = elements;
+
+  switch (status) {
+    case 'loading':
+      feedback.textContent = i18n.t(`feedback.${status}`);
+      feedback.classList.add('text-success');
+      input.classList.remove('is-invalid');
+      input.setAttribute('readonly', 'true');
+      submit.setAttribute('disabled', 'true');
+      break;
+    case 'loaded':
+    case 'deleted':
+      feedback.textContent = i18n.t(`feedback.${status}`);
+      feedback.classList.add('text-success');
+      input.value = '';
+      input.classList.remove('is-invalid');
+      input.removeAttribute('readonly');
+      submit.removeAttribute('disabled');
+      break;
+    case 'failed':
+      feedback.textContent = i18n.t(`feedback.errors.${error}`);
+      feedback.classList.add('text-danger');
+      input.classList.add('is-invalid');
+      input.removeAttribute('readonly');
+      submit.removeAttribute('disabled');
+      break;
+    default:
+      break;
+  }
+};
+
+const renderForm = (state, elements) => {
+  const { form: { valid, error } } = state;
+  const { input, feedback } = elements;
+
+  switch (valid) {
+    case true:
       feedback.textContent = '';
       feedback.classList.remove('text-success');
       feedback.classList.remove('text-danger');
       input.classList.remove('is-invalid');
       break;
-    case 'loading':
-      feedback.textContent = i18n.t(`feedback.${form.status}`);
-      feedback.classList.add('text-success');
-      feedback.classList.remove('text-danger');
-      input.classList.remove('is-invalid');
-      input.setAttribute('readonly', 'true');
-      addButton.disabled = true;
-      break;
-    case 'loaded':
-      feedback.textContent = i18n.t(`feedback.${form.status}`);
-      input.removeAttribute('readonly');
-      addButton.disabled = false;
-      input.value = '';
-      break;
-    case 'error':
-      if (i18n.exists(`feedback.${form.error}`)) {
-        feedback.textContent = i18n.t(`feedback.${form.error}`);
-      } else {
-        feedback.textContent = form.error;
-      }
+    case false:
+      feedback.textContent = i18n.t(`feedback.errors.${error}`);
       feedback.classList.remove('text-success');
       feedback.classList.add('text-danger');
       input.classList.add('is-invalid');
-      input.removeAttribute('readonly');
-      addButton.disabled = false;
       break;
     default:
-      // console.log('unknown form status:', form.status);
+      break;
   }
 };
 
@@ -75,6 +93,7 @@ const renderPosts = (state, elements) => {
   if (state.posts.length) {
     const postsList = document.createElement('ul');
     postsList.classList.add('list-group', 'mb-5');
+    console.log(state.posts);
 
     state.posts.forEach((post) => {
       const postEl = createPostElement(post);
@@ -115,6 +134,9 @@ const view = (state, elements) => {
       case 'form':
         renderForm(watchedState, elements);
         break;
+      case 'loadingProcess':
+        renderLoadingProcess(watchedState, elements);
+        break;
       case 'feeds':
         renderFeeds(watchedState, elements);
         break;
@@ -123,6 +145,9 @@ const view = (state, elements) => {
         break;
       case 'modal':
         renderModal(watchedState, elements);
+        break;
+      case 'example':
+        renderExample(watchedState, elements);
         break;
       default:
         // console.log('unknown path:', path);

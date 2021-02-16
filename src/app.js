@@ -1,19 +1,23 @@
-/* eslint-disable object-curly-newline */
 import 'bootstrap/js/dist/modal.js';
 import i18n from 'i18next';
 import { setLocale } from 'yup';
 
 import resources from './locales/index.js';
-import view from './modules/view.js';
-import { submitHandler } from './modules/handlers.js';
+import view from './view.js';
+import { submitHandler, exampleHandler } from './handlers.js';
 
 const app = () => {
   const defaultLanguage = 'en';
 
   const state = {
+    example: null,
     form: {
-      status: 'init',
-      error: '',
+      valid: false,
+      error: null,
+    },
+    loadingProcess: {
+      status: 'idle', // loading, loaded, failed
+      error: null,
     },
     feeds: [],
     posts: [],
@@ -21,7 +25,6 @@ const app = () => {
       postId: '',
     },
     ui: {
-      posts: new Set(),
       filter: {
         showFavorite: false,
         showUnread: false,
@@ -32,7 +35,7 @@ const app = () => {
   const elements = {
     form: document.querySelector('form'),
     input: document.querySelector('[name="url"]'),
-    addButton: document.querySelector('[type="submit"]'),
+    submit: document.querySelector('[type="submit"]'),
     feedback: document.querySelector('.feedback'),
     example: document.querySelector('#example'),
     feedsContainer: document.querySelector('.feeds'),
@@ -45,10 +48,11 @@ const app = () => {
 
   setLocale({
     string: {
-      url: 'inputUrlErr',
+      url: 'validUrl',
     },
     mixed: {
-      notOneOf: 'existingUrlErr',
+      required: 'required',
+      notOneOf: 'existing',
     },
   });
 
@@ -62,14 +66,10 @@ const app = () => {
     .then(() => {
       const watched = view(state, elements);
 
-      const { form, input, example } = elements;
+      const { form, example } = elements;
 
       form.addEventListener('submit', (e) => submitHandler(e, watched));
-
-      example.addEventListener('click', (e) => {
-        e.preventDefault();
-        input.value = e.target.textContent;
-      });
+      example.addEventListener('click', (e) => exampleHandler(e, watched));
     });
 };
 
