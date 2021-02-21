@@ -31,7 +31,7 @@ export const createFeedElement = (feed) => {
 };
 
 export const createPostsFilter = (state) => {
-  const uiFilter = state.ui.filter;
+  const uiFilter = state.ui.postsFilter;
   const { showFavorite, showUnread } = uiFilter;
   const unread = showUnread ? 'checked' : '';
   const favorite = showFavorite ? 'checked' : '';
@@ -55,7 +55,7 @@ export const createPostElement = (post) => {
   const { title, feedId, id, link, readed, favorite } = post;
 
   const linkClass = readed ? 'fw-normal font-weight-normal' : 'fw-bold font-weight-bold';
-  const iconFaforiteClass = favorite ? 'bi bi-star-fill' : 'bi bi-star';
+  const iconFavoriteClass = favorite ? 'bi bi-star-fill' : 'bi bi-star';
   const iconReadedClass = readed ? 'bi bi-bookmark-check-fill' : 'bi bi-bookmark';
 
   const postEl = document.createElement('li');
@@ -74,7 +74,7 @@ export const createPostElement = (post) => {
                         </div>
                         <div class="col-3 d-flex justify-content-evenly">
                           <button class="btn btn-outline-primary btn-sm" data-type="toggleFavorite">
-                            <i class="${iconFaforiteClass}" data-type="toggleFavorite"></i>
+                            <i class="${iconFavoriteClass}" data-type="toggleFavorite"></i>
                           </button>
                           <button class="btn btn-outline-primary btn-sm" data-type="toggleReaded">
                             <i class="${iconReadedClass}" data-type="toggleReaded"></i>

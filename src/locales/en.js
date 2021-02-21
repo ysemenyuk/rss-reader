@@ -4,6 +4,9 @@ export default {
       en: 'English',
       ru: 'Русский',
     },
+    title: 'RSS reader',
+    description: 'Start reading RSS today! It is easy, it is nicely.',
+    inputPlaceholder: 'RSS link',
     feedback: {
       clear: '',
       loading: 'Loading...',

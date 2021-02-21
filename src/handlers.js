@@ -9,9 +9,8 @@ import differenceBy from 'lodash/differenceBy';
 
 import parseRss from './parseRss.js';
 
-const validateInput = (value, state) => {
-  const existingUrls = state.feeds.map((feed) => feed.url);
-  const schema = yup.string().required().url().notOneOf(existingUrls);
+const validateInput = (value, existingValues) => {
+  const schema = yup.string().required().url().notOneOf(existingValues);
   try {
     schema.validateSync(value);
     return null;
@@ -33,7 +32,9 @@ const deleteFeed = (feed, state) => {
 
   state.feeds = [...feeds];
   state.posts = [...posts];
-  state.loadingProcess = { status: 'deleted', error: null };
+
+  state.form.status = 'deleted';
+  state.form.error = null;
 };
 
 const updateFeed = (feed, state) => {
@@ -42,14 +43,16 @@ const updateFeed = (feed, state) => {
     .then((response) => {
       const { posts } = parseRss(response.data.contents);
       const diffPosts = differenceBy(posts, state.posts, 'title');
-      if (diffPosts.length) {
+
+      state.feeds.forEach((item) => {
+        if (item.id === feed.id) {
+          item.updated = new Date().toLocaleString();
+        }
+      });
+
+      if (diffPosts.length !== 0) {
         const newPosts = diffPosts.map((post) => ({ ...post, id: uniqueId(), feedId: feed.id }));
         state.posts = [...state.posts, ...newPosts];
-        state.feeds.forEach((item) => {
-          if (item.id === feed.id) {
-            item.updated = new Date().toLocaleString();
-          }
-        });
       }
     })
     .catch(noop);
@@ -64,9 +67,11 @@ const updateFeed = (feed, state) => {
 // };
 
 export const exampleHandler = (e, state) => {
-  e.preventDefault();
-  state.example = '';
-  state.example = e.target.textContent;
+  state.form.input = e.target.textContent;
+};
+
+export const inputHandler = (e, state) => {
+  state.form.input = e.target.value;
 };
 
 export const submitHandler = (e, state) => {
@@ -75,91 +80,87 @@ export const submitHandler = (e, state) => {
   const formData = new FormData(e.target);
   const url = formData.get('url');
 
-  const errorInput = validateInput(url, state);
+  const existingUrls = state.feeds.map((feed) => feed.url);
+  const errorInput = validateInput(url, existingUrls);
+
   if (errorInput) {
-    state.form = { valid: false, error: errorInput };
+    state.form.status = 'failed';
+    state.form.error = errorInput;
     return;
   }
-  state.form = { valid: true, error: null };
-  state.loadingProcess = { status: 'loading', error: null };
+
+  state.form.status = 'loading';
+  state.form.error = null;
 
   axios.get(addProxyToUrl(url))
     .then((resp) => {
       const feedData = parseRss(resp.data.contents);
       const feedId = uniqueId();
+      const added = new Date().toLocaleString();
 
-      const feed = { ...feedData.feed, url, id: feedId };
+      const feed = { ...feedData.feed, url, id: feedId, added, updated: '-' };
       const posts = feedData.posts
-        .map((post) => ({ ...post, feedId, id: uniqueId(), readed: false, faforite: false }));
+        .map((post) => ({ ...post, feedId, id: uniqueId(), readed: false, favorite: false }));
 
       state.feeds = [...state.feeds, feed];
       state.posts = [...state.posts, ...posts];
-      state.loadingProcess = { status: 'loaded', error: null };
 
+      state.form.status = 'loaded';
+      state.form.error = null;
+      state.form.input = '';
       // const updateTimeout = 5000;
       // setTimeout(() => autoUpdateFeed(feed, state, updateTimeout), updateTimeout);
     })
     .catch((err) => {
-      if (err.isAxiosError) {
-        state.loadingProcess = { status: 'failed', error: 'network' };
-      } else if (err.isParsingError) {
-        state.loadingProcess = { status: 'failed', error: 'parsing' };
-      } else {
-        state.loadingProcess = { status: 'failed', error: 'unknown' };
-      }
-    });
-};
+      console.log(err.message);
 
-const toggleFeedProp = (feed, state, checked, propName) => {
-  if (checked) {
-    state.feeds.forEach((item) => {
-      if (item.id === feed.id) {
-        item[propName] = true;
+      state.form.status = 'failed';
+      if (err.isAxiosError) {
+        state.form.error = 'network';
+      } else if (err.isParsingError) {
+        state.form.error = 'parsing';
+      } else {
+        state.form.error = 'unknown';
       }
     });
-  } else {
-    state.feeds.forEach((item) => {
-      if (item.id === feed.id) {
-        item[propName] = false;
-      }
-    });
-  }
 };
 
 export const feedHandler = (e, state, feed) => {
-  // console.log(e.target);
-  // console.dir(e.target);
   if (e.target.name === 'update') {
     updateFeed(feed, state);
   } else if (e.target.name === 'delete') {
     deleteFeed(feed, state);
   } else if (e.target.name === 'autoUpdate') {
-    toggleFeedProp(feed, state, e.target.checked, 'autoUpdate');
-  } else if (e.target.name === 'showPosts') {
-    toggleFeedProp(feed, state, e.target.checked, 'showPosts');
-  }
-};
-
-const togglePostProp = (post, state, propName) => {
-  state.posts.forEach((item) => {
-    if (item.id === post.id) {
-      if (post[propName]) {
-        item[propName] = false;
-      } else {
-        item[propName] = true;
+    state.feeds.forEach((item) => {
+      if (item.id === feed.id) {
+        item.autoUpdate = !item.autoUpdate;
       }
-    }
-  });
+    });
+  } else if (e.target.name === 'showPosts') {
+    state.feeds.forEach((item) => {
+      if (item.id === feed.id) {
+        item.showPosts = !item.showPosts;
+      }
+    });
+  }
 };
 
 export const postHandler = (e, state, post) => {
   const { type, bsTarget } = e.target.dataset;
-  console.dir(e.target);
-  console.dir(e.target.dataset);
+  // console.dir(e.target);
+  // console.dir(e.target.dataset);
   if (type === 'toggleReaded') {
-    togglePostProp(post, state, 'readed');
+    state.posts.forEach((item) => {
+      if (item.id === post.id) {
+        item.readed = !item.readed;
+      }
+    });
   } else if (type === 'toggleFavorite') {
-    togglePostProp(post, state, 'favorite');
+    state.posts.forEach((item) => {
+      if (item.id === post.id) {
+        item.favorite = !item.favorite;
+      }
+    });
   } else if (type === 'readed') {
     state.posts.forEach((item) => {
       if (item.id === post.id) {
@@ -173,19 +174,10 @@ export const postHandler = (e, state, post) => {
   }
 };
 
-const toggleFilterProp = (state, checked, propName) => {
-  if (checked) {
-    state.ui.filter[propName] = true;
-  } else {
-    state.ui.filter[propName] = false;
-  }
-  console.log('toggleFilterProp', state.ui);
-};
-
 export const postsFilterHandler = (e, state) => {
   if (e.target.name === 'showUnread') {
-    toggleFilterProp(state, e.target.checked, 'showUnread');
+    state.ui.postsFilter.showUnread = !state.ui.postsFilter.showUnread;
   } else if (e.target.name === 'showFavorite') {
-    toggleFilterProp(state, e.target.checked, 'showFavorite');
+    state.ui.postsFilter.showFavorite = !state.ui.postsFilter.showFavorite;
   }
 };

@@ -4,18 +4,14 @@ import { setLocale } from 'yup';
 
 import resources from './locales/index.js';
 import view from './view.js';
-import { submitHandler, exampleHandler } from './handlers.js';
+import { inputHandler, submitHandler, exampleHandler } from './handlers.js';
 
 const app = () => {
   const defaultLanguage = 'en';
 
   const state = {
-    example: null,
     form: {
-      valid: false,
-      error: null,
-    },
-    loadingProcess: {
+      input: null,
       status: 'idle', // loading, loaded, failed
       error: null,
     },
@@ -25,7 +21,10 @@ const app = () => {
       postId: '',
     },
     ui: {
-      filter: {
+      feed: {
+        hidePosts: false,
+      },
+      postsFilter: {
         showFavorite: false,
         showUnread: false,
       },
@@ -33,6 +32,8 @@ const app = () => {
   };
 
   const elements = {
+    title: document.querySelector('h1'),
+    description: document.querySelector('.lead'),
     form: document.querySelector('form'),
     input: document.querySelector('[name="url"]'),
     submit: document.querySelector('[type="submit"]'),
@@ -66,9 +67,10 @@ const app = () => {
     .then(() => {
       const watched = view(state, elements);
 
-      const { form, example } = elements;
+      const { form, input, example } = elements;
 
       form.addEventListener('submit', (e) => submitHandler(e, watched));
+      input.addEventListener('input', (e) => inputHandler(e, watched));
       example.addEventListener('click', (e) => exampleHandler(e, watched));
     });
 };

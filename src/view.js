@@ -1,20 +1,28 @@
+/* eslint-disable object-curly-newline */
 import onChange from 'on-change';
 import i18n from 'i18next';
 import { postHandler, feedHandler, postsFilterHandler } from './handlers.js';
 import { createFeedElement, createPostElement, createPostsFilter } from './createElements.js';
 
-const renderExample = (state, elements) => {
+const renderFormInput = (state, elements) => {
   const { input } = elements;
-  input.value = state.example;
+  input.value = state.form.input;
 };
 
-const renderLoadingProcess = (state, elements) => {
-  const { loadingProcess: { status, error } } = state;
-  const { input, submit, feedback } = elements;
+const renderForm = (state, elements) => {
+  const { form: { status, error } } = state;
+  const { input, submit, feedback, title, description } = elements;
 
   switch (status) {
+    case 'idle':
+      title.textContent = i18n.t('title');
+      description.textContent = i18n.t('description');
+      input.classList.remove('is-invalid');
+      feedback.textContent = '';
+      break;
     case 'loading':
       feedback.textContent = i18n.t(`feedback.${status}`);
+      feedback.classList.remove('text-danger');
       feedback.classList.add('text-success');
       input.classList.remove('is-invalid');
       input.setAttribute('readonly', 'true');
@@ -23,8 +31,8 @@ const renderLoadingProcess = (state, elements) => {
     case 'loaded':
     case 'deleted':
       feedback.textContent = i18n.t(`feedback.${status}`);
+      feedback.classList.remove('text-danger');
       feedback.classList.add('text-success');
-      input.value = '';
       input.classList.remove('is-invalid');
       input.removeAttribute('readonly');
       submit.removeAttribute('disabled');
@@ -37,29 +45,7 @@ const renderLoadingProcess = (state, elements) => {
       submit.removeAttribute('disabled');
       break;
     default:
-      break;
-  }
-};
-
-const renderForm = (state, elements) => {
-  const { form: { valid, error } } = state;
-  const { input, feedback } = elements;
-
-  switch (valid) {
-    case true:
-      feedback.textContent = '';
-      feedback.classList.remove('text-success');
-      feedback.classList.remove('text-danger');
-      input.classList.remove('is-invalid');
-      break;
-    case false:
-      feedback.textContent = i18n.t(`feedback.errors.${error}`);
-      feedback.classList.remove('text-success');
-      feedback.classList.add('text-danger');
-      input.classList.add('is-invalid');
-      break;
-    default:
-      break;
+      throw new Error(`unknown status: ${status}`);
   }
 };
 
@@ -90,12 +76,38 @@ const renderFeeds = (state, elements) => {
 const renderPosts = (state, elements) => {
   const { postsContainer } = elements;
 
-  if (state.posts.length) {
+  if (state.posts.length !== 0) {
     const postsList = document.createElement('ul');
     postsList.classList.add('list-group', 'mb-5');
-    console.log(state.posts);
+    // console.log(state.posts);
 
-    state.posts.forEach((post) => {
+    const { showUnread, showFavorite } = state.ui.postsFilter;
+
+    const postsFiltered = [];
+
+    if (showUnread === true && showFavorite === true) {
+      state.posts.forEach((post) => {
+        if (post.readed === false && post.favorite === true) {
+          postsFiltered.push(post);
+        }
+      });
+    } else if (showUnread === true) {
+      state.posts.forEach((post) => {
+        if (post.readed === false) {
+          postsFiltered.push(post);
+        }
+      });
+    } else if (showFavorite === true) {
+      state.posts.forEach((post) => {
+        if (post.favorite === true) {
+          postsFiltered.push(post);
+        }
+      });
+    } else {
+      postsFiltered.push(...state.posts);
+    }
+
+    postsFiltered.forEach((post) => {
       const postEl = createPostElement(post);
       postEl.addEventListener('click', (e) => postHandler(e, state, post));
       postsList.prepend(postEl);
@@ -131,23 +143,23 @@ const view = (state, elements) => {
   const watchedState = onChange(state, (path) => {
     console.log('path:', path);
     switch (path) {
-      case 'form':
+      case 'form.status':
+      case 'form.error':
         renderForm(watchedState, elements);
         break;
-      case 'loadingProcess':
-        renderLoadingProcess(watchedState, elements);
+      case 'form.input':
+        renderFormInput(watchedState, elements);
         break;
       case 'feeds':
         renderFeeds(watchedState, elements);
         break;
       case 'posts':
+      case 'ui.postsFilter.showUnread':
+      case 'ui.postsFilter.showFavorite':
         renderPosts(watchedState, elements);
         break;
       case 'modal':
         renderModal(watchedState, elements);
-        break;
-      case 'example':
-        renderExample(watchedState, elements);
         break;
       default:
         // console.log('unknown path:', path);
